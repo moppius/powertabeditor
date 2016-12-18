@@ -2523,7 +2523,6 @@ void PowerTabEditor::createMixer()
 {
     myMixerDockWidget = new QDockWidget(tr("Mixer"), this);
     myMixerDockWidget->setAllowedAreas(Qt::BottomDockWidgetArea);
-    myMixerDockWidget->setFeatures(QDockWidget::DockWidgetClosable);
     // The object name is used by QMainWindow::saveState().
     myMixerDockWidget->setObjectName("Mixer");
 

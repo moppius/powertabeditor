@@ -2522,7 +2522,10 @@ std::vector<Command *> PowerTabEditor::getCommands()
 void PowerTabEditor::createMixer()
 {
     myMixerDockWidget = new QDockWidget(tr("Mixer"), this);
-    myMixerDockWidget->setAllowedAreas(Qt::BottomDockWidgetArea);
+    myMixerDockWidget->setAllowedAreas(Qt::AllDockWidgetAreas);
+    myMixerDockWidget->setFeatures(QDockWidget::DockWidgetMovable |
+                                   QDockWidget::DockWidgetFloatable |
+                                   QDockWidget::DockWidgetClosable);
     // The object name is used by QMainWindow::saveState().
     myMixerDockWidget->setObjectName("Mixer");
 
@@ -2548,8 +2551,10 @@ void PowerTabEditor::createMixer()
 void PowerTabEditor::createInstrumentPanel()
 {
     myInstrumentDockWidget = new QDockWidget(tr("Instruments"), this);
-    myInstrumentDockWidget->setAllowedAreas(Qt::BottomDockWidgetArea);
-    myInstrumentDockWidget->setFeatures(QDockWidget::DockWidgetClosable);
+    myInstrumentDockWidget->setAllowedAreas(Qt::AllDockWidgetAreas);
+    myInstrumentDockWidget->setFeatures(QDockWidget::DockWidgetMovable |
+                                        QDockWidget::DockWidgetFloatable |
+                                        QDockWidget::DockWidgetClosable);
     myInstrumentDockWidget->setObjectName("Instruments");
 
     QScrollArea *scroll = new QScrollArea(this);

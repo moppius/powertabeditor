@@ -22,6 +22,7 @@
 #include <chrono>
 #include <future>
 #include <painters/caretpainter.h>
+#include <painters/scoreinforenderer.h>
 #include <painters/systemrenderer.h>
 #include <QDebug>
 #include <QGraphicsItem>
@@ -39,6 +40,7 @@ void ScoreArea::Scene::dragEnterEvent(QGraphicsSceneDragDropEvent *event)
 
 ScoreArea::ScoreArea(QWidget *parent)
     : QGraphicsView(parent),
+      myScoreInfoBlock(nullptr),
       myCaretPainter(nullptr),
       myClickPubSub(std::make_shared<ClickPubSub>())
 {
@@ -60,6 +62,8 @@ void ScoreArea::renderDocument(const Document &document)
     myCaretPainter->subscribeToMovement([=]() {
         adjustScroll();
     });
+
+    myScoreInfoBlock = ScoreInfoRenderer::render(score.getScoreInfo());
 
     myRenderedSystems.reserve(score.getSystems().size());
     for (unsigned int i = 0; i < score.getSystems().size(); ++i)
@@ -93,15 +97,17 @@ void ScoreArea::renderDocument(const Document &document)
     for (auto &&task : tasks)
         task.get();
 
-    int i = 0;
     double height = 0;
+    // Score info.
+    myScene.addItem(myScoreInfoBlock);
+    height += myScoreInfoBlock->boundingRect().height() + 0.5 * SYSTEM_SPACING;
+
     // Layout the systems.
     for (QGraphicsItem *system : myRenderedSystems)
     {
         system->setPos(0, height);
         myScene.addItem(system);
         height += system->boundingRect().height() + SYSTEM_SPACING;
-        ++i;
 
         myCaretPainter->addSystemRect(system->sceneBoundingRect());
     }
@@ -160,29 +166,44 @@ void ScoreArea::print(QPrinter &printer)
     // Hide the caret when printing.
     myCaretPainter->hide();
 
-    QRectF target(0, 0, painter.device()->width(), painter.device()->height());
+    QRectF target_rect(0, 0, painter.device()->width(),
+                       painter.device()->height());
 
-    for (QGraphicsItem *system : myRenderedSystems)
+    QList<QGraphicsItem*> items;
+    items.append(myScoreInfoBlock);
+    items.append(myRenderedSystems);
+
+    for (int i = 0, n = items.length(); i < n; ++i)
     {
-        const QRectF source = system->sceneBoundingRect();
+        const QGraphicsItem *item = items[i];
 
-        // Figure out how much space the system will take up on the page, and
+        const QRectF source_rect = item->sceneBoundingRect();
+        const float ratio =
+            std::min(target_rect.width() / source_rect.width(),
+                     target_rect.height() / source_rect.height());
+
+        if (i > 0)
+        {
+            const QGraphicsItem *prev_item = items[i - 1];
+            const double spacing =
+                source_rect.y() - prev_item->sceneBoundingRect().bottom();
+            target_rect.moveTop(target_rect.y() + spacing * ratio);
+        }
+
+        // Figure out how much space the item will take up on the page, and
         // determine if we need a page break.
-        const float ratio = std::min(target.width() / source.width(),
-                                     target.height() / source.height());
-        const float systemHeight = source.height() * ratio;
-        if (target.y() + systemHeight > target.height())
+        const float height = source_rect.height() * ratio;
+        if (target_rect.y() + height > painter.device()->height())
         {
             printer.newPage();
-            target.moveTop(0);
+            target_rect.moveTop(0);
         }
 
         // Draw the system on the page.
-        scene()->render(&painter, target, source);
+        scene()->render(&painter, target_rect, source_rect);
 
-        // Set the location for the next system, and include some padding
-        // between systems.
-        target.moveTop(target.y() + systemHeight + SYSTEM_SPACING * ratio);
+        // Set the location for the next item.
+        target_rect.moveTop(target_rect.y() + height);
     }
 
     myCaretPainter->show();
@@ -217,9 +238,9 @@ void ScoreArea::focusOutEvent(QFocusEvent *)
     myScene.update(myCaretPainter->sceneBoundingRect());
 }
 
-void ScoreArea::zoomTo(double percent)
+void ScoreArea::refreshZoom()
 {
-    double scale_factor = percent / 100.0;
+    double scale_factor = myDocument->getViewOptions().getZoom() / 100.0;
 
     QTransform xform;
     xform.scale(scale_factor, scale_factor);

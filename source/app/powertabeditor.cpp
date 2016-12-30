@@ -172,6 +172,7 @@ PowerTabEditor::PowerTabEditor()
     QFontDatabase::addApplicationFont(":fonts/emmentaler-13.otf");
     // Load the tab note font.
     QFontDatabase::addApplicationFont(":fonts/LiberationSans-Regular.ttf");
+    QFontDatabase::addApplicationFont(":fonts/LiberationSerif-Regular.ttf");
 
     connect(myUndoManager.get(), SIGNAL(redrawNeeded(int)), this,
             SLOT(redrawSystem(int)));
@@ -561,7 +562,7 @@ void PowerTabEditor::editFileInformation()
     {
         myUndoManager->push(
             new EditFileInformation(getLocation(), dialog.getScoreInfo()),
-            getLocation().getSystemIndex());
+            UndoManager::AFFECTS_ALL_SYSTEMS);
     }
 }
 
@@ -583,6 +584,7 @@ void PowerTabEditor::startStopPlayback(bool from_measure_start)
 
         getCaret().setIsInPlaybackMode(true);
         myPlaybackWidget->setPlaybackMode(true);
+        enableEditing(false);
 
         const ScoreLocation &location = getLocation();
         myMidiPlayer.reset(
@@ -2889,8 +2891,8 @@ void PowerTabEditor::createTabArea()
     connect(myPlaybackWidget, &PlaybackWidget::activeFilterChanged, this,
             &PowerTabEditor::updateActiveFilter);
 
-    connect(myPlaybackWidget, &PlaybackWidget::zoomChanged,
-            [&](double percent) { getScoreArea()->zoomTo(percent); });
+    connect(myPlaybackWidget, &PlaybackWidget::zoomChanged, this,
+            &PowerTabEditor::updateZoom);
 
     auto update_metronome_state = [&]() {
         auto settings = mySettingsManager->getReadHandle();
@@ -3034,15 +3036,6 @@ inline void updateNoteProperty(Command *command, const Note *note,
 
 void PowerTabEditor::updateCommands()
 {
-    // Disable editing during playback.
-    if (myIsPlaying)
-        enableEditing(false);
-
-    myPlayPauseCommand->setEnabled(true);
-    myRewindCommand->setEnabled(true);
-    myMetronomeCommand->setEnabled(true);
-    myStopCommand->setEnabled(myIsPlaying);
-
     if (myIsPlaying)
         return;
 
@@ -3273,6 +3266,15 @@ void PowerTabEditor::enableEditing(bool enable)
     myNextTabCommand->setEnabled(enable);
     myPrevTabCommand->setEnabled(enable);
 
+    // MIDI commands are always enabled if documents are open.
+    if (myDocumentManager->hasOpenDocuments())
+    {
+        myPlayPauseCommand->setEnabled(true);
+        myRewindCommand->setEnabled(true);
+        myMetronomeCommand->setEnabled(true);
+        myStopCommand->setEnabled(myIsPlaying);
+    }
+
     // Prevent the user from changing tabs during playback.
     myTabWidget->tabBar()->setEnabled(enable);
 }
@@ -3341,6 +3343,12 @@ void PowerTabEditor::updateActiveFilter(int filter)
 {
     myDocumentManager->getCurrentDocument().getViewOptions().setFilter(filter);
     redrawScore();
+}
+
+void PowerTabEditor::updateZoom(double percent)
+{
+    myDocumentManager->getCurrentDocument().getViewOptions().setZoom(percent);
+    getScoreArea()->refreshZoom();
 }
 
 void PowerTabEditor::updateLocationLabel()

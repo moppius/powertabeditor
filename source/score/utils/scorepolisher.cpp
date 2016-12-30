@@ -116,16 +116,17 @@ static void computeTimestampPosition(
         // If this timestamp falls in between two timestamps from another voice,
         // insert it and shift the following timestamps over if necessary.
         it = timestampPositions.lower_bound(timestamp);
-        if (it != timestampPositions.begin())
-        {
-            position = std::max(boost::prior(it)->second + 1, minPosition);
 
-            if (it != timestampPositions.end() && it->second <= position)
-            {
-                const int shiftAmount = (position - it->second) + 1;
-                for (; it != timestampPositions.end(); ++it)
-                    it->second += shiftAmount;
-            }
+        if (it != timestampPositions.begin())
+            position = std::max(boost::prior(it)->second + 1, minPosition);
+        else
+            position = 0;
+
+        if (it != timestampPositions.end() && it->second <= position)
+        {
+            const int shiftAmount = (position - it->second) + 1;
+            for (; it != timestampPositions.end(); ++it)
+                it->second += shiftAmount;
         }
     }
 
@@ -182,9 +183,11 @@ void ScoreUtils::polishSystem(System &system)
             }
         }
 
-        int maxPosition = 0;
-        if (!timestampPositions.empty())
-            maxPosition = boost::prior(timestampPositions.end())->second;
+        // Empty bar - leave as-is.
+        if (timestampPositions.empty())
+            continue;
+
+        int maxPosition = std::max(1, timestampPositions.rbegin()->second);
 
         // Adjust!
         const int startPos =

@@ -1,5 +1,5 @@
 /*
-  * Copyright (C) 2015 Cameron White
+  * Copyright (C) 2016 Cameron White
   *
   * This program is free software: you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
@@ -14,29 +14,16 @@
   * You should have received a copy of the GNU General Public License
   * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-  
-#ifndef APP_VIEWOPTIONS_H
-#define APP_VIEWOPTIONS_H
 
-#include <boost/optional/optional.hpp>
+#ifndef PAINTERS_SCOREINFO_H
+#define PAINTERS_SCOREINFO_H
 
-/// Stores any view options that are not saved with the score (e.g. the current
-/// zoom level or the active score filter).
-class ViewOptions
+class QGraphicsItem;
+class ScoreInfo;
+
+namespace ScoreInfoRenderer
 {
-public:
-    ViewOptions();
-
-    const boost::optional<int> &getFilter() const { return myFilter; }
-    void setFilter(int filter) { myFilter = filter; }
-    void clearFilter() { myFilter.reset(); }
-
-    double getZoom() const { return myZoom; }
-    void setZoom(double percent) { myZoom = percent; }
-
-private:
-    boost::optional<int> myFilter;
-    double myZoom;
-};
+QGraphicsItem *render(const ScoreInfo &score_info);
+}
 
 #endif

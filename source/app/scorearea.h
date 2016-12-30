@@ -46,7 +46,7 @@ public:
 
     void renderDocument(const Document &document);
 
-    void zoomTo(double percent);
+    void refreshZoom();
 
     void print(QPrinter &printer);
 
@@ -66,6 +66,7 @@ private:
 
     Scene myScene;
     boost::optional<const Document &> myDocument;
+    QGraphicsItem *myScoreInfoBlock;
     QList<QGraphicsItem *> myRenderedSystems;
     CaretPainter *myCaretPainter;
 
